@@ -11,8 +11,7 @@ defmodule Deadbuttons.Application do
       DeadbuttonsWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:deadbuttons, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Deadbuttons.PubSub},
-      # Start a worker by calling: Deadbuttons.Worker.start_link(arg)
-      # {Deadbuttons.Worker, arg},
+      Deadbuttons.ScanLimiter,
       # Start to serve requests, typically the last entry
       DeadbuttonsWeb.Endpoint
     ]

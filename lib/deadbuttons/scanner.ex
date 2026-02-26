@@ -23,15 +23,24 @@ defmodule Deadbuttons.Scanner do
   - `{:scan_error, reason}`
   """
   def scan_async(url, pid) do
-    Task.start(fn ->
-      try do
-        send(pid, {:scan_status, :fetching_page})
-        results = scan(url, pid)
-        send(pid, {:scan_done, results})
-      rescue
-        e -> send(pid, {:scan_error, Exception.message(e)})
-      end
-    end)
+    case Deadbuttons.ScanLimiter.acquire() do
+      :ok ->
+        Task.start(fn ->
+          try do
+            send(pid, {:scan_status, :fetching_page})
+            results = scan(url, pid)
+            send(pid, {:scan_done, results})
+          rescue
+            e -> send(pid, {:scan_error, Exception.message(e)})
+          after
+            Deadbuttons.ScanLimiter.release()
+          end
+        end)
+
+      :busy ->
+        send(pid, {:scan_error, "The aardvark is sniffing too many pages right now! Try again in a moment."})
+        {:ok, nil}
+    end
   end
 
   defp scan(url, pid) do
