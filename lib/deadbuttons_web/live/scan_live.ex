@@ -19,21 +19,26 @@ defmodule DeadbuttonsWeb.ScanLive do
   def handle_event("scan", %{"url" => url}, socket) do
     url = String.trim(url)
 
-    if url == "" do
-      {:noreply, assign(socket, error: "The aardvark needs a URL to sniff out!")}
-    else
-      url = if String.starts_with?(url, "http"), do: url, else: "https://#{url}"
-      Deadbuttons.Scanner.scan_async(url, self())
+    cond do
+      url == "" ->
+        {:noreply, assign(socket, error: "The aardvark needs a URL to sniff out!")}
 
-      {:noreply,
-       assign(socket,
-         state: :scanning,
-         url: url,
-         buttons: [],
-         results: [],
-         status_message: "Snout down, digging in...",
-         error: nil
-       )}
+      not valid_url?(url) ->
+        {:noreply, assign(socket, error: "That doesn't look like a URL. Try something like https://example.com")}
+
+      true ->
+        url = if String.starts_with?(url, "http"), do: url, else: "https://#{url}"
+        Deadbuttons.Scanner.scan_async(url, self())
+
+        {:noreply,
+         assign(socket,
+           state: :scanning,
+           url: url,
+           buttons: [],
+           results: [],
+           status_message: "Snout down, digging in...",
+           error: nil
+         )}
     end
   end
 
@@ -401,5 +406,11 @@ defmodule DeadbuttonsWeb.ScanLive do
       <% end %>
     </div>
     """
+  end
+
+  defp valid_url?(url) do
+    url = if String.starts_with?(url, "http"), do: url, else: "https://#{url}"
+    uri = URI.parse(url)
+    uri.scheme in ["http", "https"] and is_binary(uri.host) and uri.host =~ "."
   end
 end
