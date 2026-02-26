@@ -6,6 +6,15 @@ defmodule Deadbuttons.Scanner do
 
   alias Deadbuttons.ImageUtil
 
+  # Keep concurrency low to avoid OOM on small machines
+  @max_concurrency 3
+  @task_timeout 12_000
+  @max_candidates 100
+  # Only need first 1KB to read image dimensions
+  @image_header_bytes 1024
+  # Cap page body at 2MB
+  @max_page_bytes 2 * 1024 * 1024
+
   @doc """
   Starts an async scan of the given URL. Sends messages to `pid`:
   - `{:scan_status, :fetching_page}`
@@ -31,14 +40,17 @@ defmodule Deadbuttons.Scanner do
     html = fetch_page(url)
     send(pid, {:scan_status, :parsing})
 
-    candidates = find_button_candidates(html, url)
+    candidates =
+      html
+      |> find_button_candidates(url)
+      |> Enum.take(@max_candidates)
 
     buttons =
       candidates
       |> Task.async_stream(
         fn candidate -> check_if_88x31(candidate) end,
-        max_concurrency: 10,
-        timeout: 15_000,
+        max_concurrency: @max_concurrency,
+        timeout: @task_timeout,
         on_timeout: :kill_task
       )
       |> Enum.flat_map(fn
@@ -55,8 +67,8 @@ defmodule Deadbuttons.Scanner do
       buttons
       |> Task.async_stream(
         fn button -> check_link(button) end,
-        max_concurrency: 10,
-        timeout: 15_000,
+        max_concurrency: @max_concurrency,
+        timeout: @task_timeout,
         on_timeout: :kill_task
       )
       |> Enum.flat_map(fn
@@ -75,8 +87,9 @@ defmodule Deadbuttons.Scanner do
       Req.get!(url,
         redirect: true,
         max_redirects: 5,
-        connect_options: [timeout: 10_000],
-        receive_timeout: 15_000
+        connect_options: [timeout: 8_000],
+        receive_timeout: 10_000,
+        max_body: @max_page_bytes
       )
 
     if resp.status == 200 do
@@ -118,8 +131,8 @@ defmodule Deadbuttons.Scanner do
     if candidate.width_attr == "88" and candidate.height_attr == "31" do
       {:ok, Map.take(candidate, [:img_src, :link_href])}
     else
-      # Fetch image and check dimensions
-      case fetch_image(candidate.img_src) do
+      # Fetch just the image header bytes to check dimensions
+      case fetch_image_header(candidate.img_src) do
         {:ok, data} ->
           if ImageUtil.is_88x31?(data) do
             {:ok, Map.take(candidate, [:img_src, :link_href])}
@@ -133,19 +146,28 @@ defmodule Deadbuttons.Scanner do
     end
   end
 
-  defp fetch_image(url) do
+  # Fetch only the first N bytes of an image — enough to read dimension headers
+  defp fetch_image_header(url) do
     try do
       resp =
         Req.get!(url,
           redirect: true,
           max_redirects: 5,
-          connect_options: [timeout: 10_000],
-          receive_timeout: 10_000,
+          connect_options: [timeout: 8_000],
+          receive_timeout: 8_000,
+          headers: [{"range", "bytes=0-#{@image_header_bytes - 1}"}],
           raw: true
         )
 
-      if resp.status == 200 do
-        {:ok, resp.body}
+      # 200 = full body (server ignored Range), 206 = partial content
+      if resp.status in [200, 206] do
+        # If server returned full body, only keep what we need
+        body = if byte_size(resp.body) > @image_header_bytes do
+          binary_part(resp.body, 0, @image_header_bytes)
+        else
+          resp.body
+        end
+        {:ok, body}
       else
         :error
       end
@@ -158,22 +180,24 @@ defmodule Deadbuttons.Scanner do
     url = button.link_href
 
     try do
-      # Try HEAD first, fall back to GET
+      # Try HEAD first (no body), fall back to GET with body size cap
       resp =
         try do
           Req.head!(url,
             redirect: true,
             max_redirects: 5,
-            connect_options: [timeout: 10_000],
-            receive_timeout: 10_000
+            connect_options: [timeout: 8_000],
+            receive_timeout: 8_000
           )
         rescue
           _ ->
+            # Some servers reject HEAD; do a GET but cap the body
             Req.get!(url,
               redirect: true,
               max_redirects: 5,
-              connect_options: [timeout: 10_000],
-              receive_timeout: 10_000
+              connect_options: [timeout: 8_000],
+              receive_timeout: 8_000,
+              max_body: 4_096
             )
         end
 
