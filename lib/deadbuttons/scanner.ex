@@ -12,8 +12,6 @@ defmodule Deadbuttons.Scanner do
   @max_candidates 100
   # Only need first 1KB to read image dimensions
   @image_header_bytes 1024
-  # Cap page body at 2MB
-  @max_page_bytes 2 * 1024 * 1024
 
   @doc """
   Starts an async scan of the given URL. Sends messages to `pid`:
@@ -88,8 +86,7 @@ defmodule Deadbuttons.Scanner do
         redirect: true,
         max_redirects: 5,
         connect_options: [timeout: 8_000],
-        receive_timeout: 10_000,
-        max_body: @max_page_bytes
+        receive_timeout: 10_000
       )
 
     if resp.status == 200 do
@@ -196,8 +193,7 @@ defmodule Deadbuttons.Scanner do
               redirect: true,
               max_redirects: 5,
               connect_options: [timeout: 8_000],
-              receive_timeout: 8_000,
-              max_body: 4_096
+              receive_timeout: 8_000
             )
         end
 
