@@ -4,7 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Deadbuttons" suffix=" · Phoenix Framework">
+    <meta name="description" content="Find broken links behind 88x31 buttons on any web page. Paste a URL and let the aardvark sniff out dead blogroll badges, webring buttons, and friend links." />
+    <meta property="og:title" content="deadbuttons — 88x31 button link checker" />
+    <meta property="og:description" content="Find broken links behind 88x31 buttons on any web page." />
+    <meta property="og:type" content="website" />
+    <.live_title default="deadbuttons — 88x31 button link checker">
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
