@@ -103,3 +103,33 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+@keyframes bg-scroll {
+  0% { background-position: 0 0; }
+  100% { background-position: 60px 60px; }
+}
+
+.animated-bg {
+  background-image: url('/images/bg-tile.svg');
+  background-repeat: repeat;
+  animation: bg-scroll 4s linear infinite;
+}
+
+@keyframes tongue-lick {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.6); }
+}
+
+.aardvark-lick {
+  animation: tongue-lick 0.8s ease-in-out infinite;
+}
+
+@keyframes sniff {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-3px) rotate(-2deg); }
+  75% { transform: translateY(3px) rotate(2deg); }
+}
+
+.aardvark-sniff {
+  animation: sniff 1.2s ease-in-out infinite;
+}

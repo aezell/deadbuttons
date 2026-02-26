@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Body -->
+  <ellipse cx="105" cy="120" rx="55" ry="40" fill="#aa00ee" stroke="#000" stroke-width="4"/>
+  <!-- Tail -->
+  <path d="M155 130 Q185 110 175 85 Q172 78 165 82 Q170 100 148 118" fill="#aa00ee" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+  <!-- Back leg -->
+  <ellipse cx="135" cy="155" rx="12" ry="18" fill="#8800cc" stroke="#000" stroke-width="3"/>
+  <rect x="128" y="168" width="14" height="8" rx="4" fill="#8800cc" stroke="#000" stroke-width="3"/>
+  <!-- Front leg -->
+  <ellipse cx="75" cy="155" rx="12" ry="18" fill="#8800cc" stroke="#000" stroke-width="3"/>
+  <rect x="68" y="168" width="14" height="8" rx="4" fill="#8800cc" stroke="#000" stroke-width="3"/>
+  <!-- Claws -->
+  <line x1="68" y1="176" x2="65" y2="182" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="75" y1="176" x2="75" y2="183" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="82" y1="176" x2="85" y2="182" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="128" y1="176" x2="125" y2="182" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="135" y1="176" x2="135" y2="183" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="142" y1="176" x2="145" y2="182" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Neck -->
+  <ellipse cx="65" cy="105" rx="22" ry="28" fill="#aa00ee" stroke="#000" stroke-width="4"/>
+  <!-- Head -->
+  <ellipse cx="45" cy="85" rx="25" ry="22" fill="#aa00ee" stroke="#000" stroke-width="4"/>
+  <!-- Snout (long!) -->
+  <path d="M25 88 Q-5 92 -8 88 Q-10 85 -5 83 Q0 80 25 82" fill="#f11cac" stroke="#000" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- Nostril -->
+  <ellipse cx="-2" cy="85.5" rx="3" ry="2.5" fill="#000"/>
+  <!-- Tongue (licking!) -->
+  <path d="M-8 86 Q-22 90 -25 86 Q-27 82 -20 83" fill="#ff6b6b" stroke="#000" stroke-width="2" stroke-linecap="round" fill-opacity="0.9"/>
+  <!-- Eye -->
+  <circle cx="38" cy="78" r="7" fill="#fff" stroke="#000" stroke-width="3"/>
+  <circle cx="36" cy="77" r="3.5" fill="#000"/>
+  <circle cx="35" cy="75.5" r="1.5" fill="#fff"/>
+  <!-- Ear -->
+  <ellipse cx="58" cy="62" rx="10" ry="16" fill="#f11cac" stroke="#000" stroke-width="3.5" transform="rotate(15, 58, 62)"/>
+  <ellipse cx="58" cy="64" rx="5" ry="10" fill="#ffee11" stroke="none" transform="rotate(15, 58, 64)"/>
+  <!-- Belly highlight -->
+  <ellipse cx="105" cy="128" rx="35" ry="18" fill="#cc44ff" opacity="0.4"/>
+</svg>
