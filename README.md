@@ -1,18 +1,39 @@
 # Deadbuttons
 
-To start your Phoenix server:
+A link checker for [88x31 buttons](https://en.wikipedia.org/wiki/Web_banner#Standard_sizes) — those tiny badge images used as blogroll links, webring buttons, and friend badges across the IndieWeb and SmallWeb.
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+Over time, the sites behind those buttons disappear. Deadbuttons finds them and tells you which links are still alive.
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+## Try it
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+A live instance is running at **https://checker1994-bj4r6.sprites.app/**
 
-## Learn more
+1. Paste the URL of a page that has 88x31 button links
+2. Hit **Scan for dead buttons**
+3. Watch results appear in real time as each button is found and its link is checked
 
-* Official website: https://www.phoenixframework.org/
-* Guides: https://hexdocs.pm/phoenix/overview.html
-* Docs: https://hexdocs.pm/phoenix
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+Each result shows the button image, where it links, and whether that link is alive, dead, redirecting, or erroring out.
+
+## Run it yourself
+
+You'll need Elixir 1.15+ and Erlang/OTP 26+.
+
+```
+git clone https://github.com/aezell/deadbuttons.git
+cd deadbuttons
+mix setup
+mix phx.server
+```
+
+Then visit [localhost:4000](http://localhost:4000).
+
+## What counts as a "button"
+
+Deadbuttons looks for `<img>` tags inside `<a>` links where the image is exactly 88x31 pixels. It checks dimensions two ways:
+
+- HTML `width` and `height` attributes on the `<img>` tag
+- Actual pixel dimensions from the image file (GIF, PNG, or JPEG)
+
+## Privacy
+
+No accounts, no database, no cookies, no tracking. Enter a URL, get results, done. Nothing is stored.
