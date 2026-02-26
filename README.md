@@ -6,7 +6,7 @@ Over time, the sites behind those buttons disappear. Deadbuttons finds them and 
 
 ## Try it
 
-A live instance is running at **https://checker1994-bj4r6.sprites.app/**
+A live instance is running at **https://deadbuttons.online**
 
 1. Paste the URL of a page that has 88x31 button links
 2. Hit **Scan for dead buttons**
