@@ -13,8 +13,6 @@ defmodule Deadbuttons.Scanner do
   # Only need first 512 bytes to read image dimensions
   # (GIF needs 10, PNG needs 24, JPEG needs ~500 worst case)
   @image_header_bytes 512
-  # Cap HTML at 512KB — buttons are near the top of the page
-  @max_html_bytes 512 * 1024
 
   def scan_async(url, pid) do
     case Deadbuttons.ScanLimiter.acquire() do
@@ -85,28 +83,17 @@ defmodule Deadbuttons.Scanner do
     results
   end
 
-  # Stream the HTML body, accumulating up to @max_html_bytes then halting.
   defp fetch_page(url) do
     resp =
       Req.get!(url,
         redirect: true,
         max_redirects: 5,
         connect_options: [timeout: 8_000],
-        receive_timeout: 10_000,
-        into: fn {:data, data}, {req, resp} ->
-          acc = Map.get(resp.headers, "x-acc", <<>>)
-          acc = acc <> data
-
-          if byte_size(acc) >= @max_html_bytes do
-            {:halt, {req, put_in(resp.headers["x-acc"], acc)}}
-          else
-            {:cont, {req, put_in(resp.headers["x-acc"], acc)}}
-          end
-        end
+        receive_timeout: 10_000
       )
 
     if resp.status == 200 do
-      Map.get(resp.headers, "x-acc", <<>>)
+      resp.body
     else
       raise "Failed to fetch page: HTTP #{resp.status}"
     end
