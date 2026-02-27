@@ -10,18 +10,12 @@ defmodule Deadbuttons.Scanner do
   @max_concurrency 3
   @task_timeout 12_000
   @max_candidates 100
-  # Only need first 1KB to read image dimensions
-  @image_header_bytes 1024
+  # Only need first 512 bytes to read image dimensions
+  # (GIF needs 10, PNG needs 24, JPEG needs ~500 worst case)
+  @image_header_bytes 512
+  # Cap HTML at 512KB — buttons are near the top of the page
+  @max_html_bytes 512 * 1024
 
-  @doc """
-  Starts an async scan of the given URL. Sends messages to `pid`:
-  - `{:scan_status, :fetching_page}`
-  - `{:scan_status, :parsing}`
-  - `{:button_found, button_map}`
-  - `{:link_checked, result_map}`
-  - `{:scan_done, results}`
-  - `{:scan_error, reason}`
-  """
   def scan_async(url, pid) do
     case Deadbuttons.ScanLimiter.acquire() do
       :ok ->
@@ -47,10 +41,12 @@ defmodule Deadbuttons.Scanner do
     html = fetch_page(url)
     send(pid, {:scan_status, :parsing})
 
-    candidates =
-      html
-      |> find_button_candidates(url)
-      |> Enum.take(@max_candidates)
+    candidates = find_button_candidates(html, url)
+
+    # Let GC reclaim the HTML body and parsed doc
+    :erlang.garbage_collect()
+
+    candidates = Enum.take(candidates, @max_candidates)
 
     buttons =
       candidates
@@ -89,17 +85,28 @@ defmodule Deadbuttons.Scanner do
     results
   end
 
+  # Stream the HTML body, accumulating up to @max_html_bytes then halting.
   defp fetch_page(url) do
     resp =
       Req.get!(url,
         redirect: true,
         max_redirects: 5,
         connect_options: [timeout: 8_000],
-        receive_timeout: 10_000
+        receive_timeout: 10_000,
+        into: fn {:data, data}, {req, resp} ->
+          acc = Map.get(resp.headers, "x-acc", <<>>)
+          acc = acc <> data
+
+          if byte_size(acc) >= @max_html_bytes do
+            {:halt, {req, put_in(resp.headers["x-acc"], acc)}}
+          else
+            {:cont, {req, put_in(resp.headers["x-acc"], acc)}}
+          end
+        end
       )
 
     if resp.status == 200 do
-      resp.body
+      Map.get(resp.headers, "x-acc", <<>>)
     else
       raise "Failed to fetch page: HTTP #{resp.status}"
     end
@@ -108,7 +115,6 @@ defmodule Deadbuttons.Scanner do
   defp find_button_candidates(html, base_url) do
     {:ok, doc} = Floki.parse_document(html)
 
-    # Find all <a> tags that contain <img> tags
     doc
     |> Floki.find("a")
     |> Enum.flat_map(fn a_node ->
@@ -133,11 +139,9 @@ defmodule Deadbuttons.Scanner do
   end
 
   defp check_if_88x31(candidate) do
-    # First check HTML attributes
     if candidate.width_attr == "88" and candidate.height_attr == "31" do
       {:ok, Map.take(candidate, [:img_src, :link_href])}
     else
-      # Fetch just the image header bytes to check dimensions
       case fetch_image_header(candidate.img_src) do
         {:ok, data} ->
           if ImageUtil.is_88x31?(data) do
@@ -152,7 +156,8 @@ defmodule Deadbuttons.Scanner do
     end
   end
 
-  # Fetch only the first N bytes of an image — enough to read dimension headers
+  # Stream only the first @image_header_bytes of the image, then halt.
+  # This works regardless of whether the server honors Range headers.
   defp fetch_image_header(url) do
     try do
       resp =
@@ -161,19 +166,21 @@ defmodule Deadbuttons.Scanner do
           max_redirects: 5,
           connect_options: [timeout: 8_000],
           receive_timeout: 8_000,
-          headers: [{"range", "bytes=0-#{@image_header_bytes - 1}"}],
-          raw: true
+          raw: true,
+          into: fn {:data, data}, {req, resp} ->
+            acc = Map.get(resp.headers, "x-acc", <<>>)
+            acc = acc <> data
+
+            if byte_size(acc) >= @image_header_bytes do
+              {:halt, {req, put_in(resp.headers["x-acc"], acc)}}
+            else
+              {:cont, {req, put_in(resp.headers["x-acc"], acc)}}
+            end
+          end
         )
 
-      # 200 = full body (server ignored Range), 206 = partial content
       if resp.status in [200, 206] do
-        # If server returned full body, only keep what we need
-        body = if byte_size(resp.body) > @image_header_bytes do
-          binary_part(resp.body, 0, @image_header_bytes)
-        else
-          resp.body
-        end
-        {:ok, body}
+        {:ok, Map.get(resp.headers, "x-acc", <<>>)}
       else
         :error
       end
@@ -186,7 +193,7 @@ defmodule Deadbuttons.Scanner do
     url = button.link_href
 
     try do
-      # Try HEAD first (no body), fall back to GET with body size cap
+      # Try HEAD first (no body)
       resp =
         try do
           Req.head!(url,
@@ -197,12 +204,16 @@ defmodule Deadbuttons.Scanner do
           )
         rescue
           _ ->
-            # Some servers reject HEAD; do a GET but cap the body
+            # Some servers reject HEAD; do a GET but only read the status,
+            # halt immediately to avoid downloading the body.
             Req.get!(url,
               redirect: true,
               max_redirects: 5,
               connect_options: [timeout: 8_000],
-              receive_timeout: 8_000
+              receive_timeout: 8_000,
+              into: fn {:data, _data}, {req, resp} ->
+                {:halt, {req, resp}}
+              end
             )
         end
 
@@ -247,7 +258,6 @@ defmodule Deadbuttons.Scanner do
         "#{base_uri.scheme}://#{base_uri.host}#{url}"
 
       true ->
-        # Relative URL
         base
         |> URI.parse()
         |> URI.merge(url)
